@@ -3,13 +3,13 @@
 This part builds on your Part 10 solution. In Part 10, you created a class that contains the search logic and the 
 combination of multiple `SearchResult` instances to create the final, displayed `SearchResult`. 
 
-You now find a class `Searcher` that does the same thing but based on a positional index (class `Index`), that you also 
+In `models.py`, you now find a class `Searcher` that does the same thing but based on a positional index (class `Index`), that you also 
 find in `models.py`. Before you begin, make yourself comfortable with the code and try to understand how the positional 
 index is implemented to have a rough idea.
 
-Your task is to complete the positional index. There are two todos in the `Index` and one todo in the `Searcher` class.
-Fill the gaps for things to work. See the ToDos and their description in `models.py` to get a better idea of what the
-concrete tasks are.
+Your task is to complete the positional index and the search. There are two todos in the `Index` and one todo in the 
+`Searcher` class. Fill the gaps for things to work. See the ToDos section and the todo description in `models.py` to 
+get a better idea of what the concrete tasks are.
 
 ## Run the app
 
@@ -19,8 +19,9 @@ python -m part11.app
 
 ## What to implement (ToDos)
 
-Your ToDos are all located in `part11/models.py`, but you are free to move classes and functions around or create
-new modules.
+The todo 0 is located in `part11/app.py`, the rest in `part11/models.py`, but you are free to move classes and
+functions around or create new modules.
+
 0.  If you came up with a solution to de-duplicate the settings code (highlight, search-mode, hl-mode), move it from 
     Part 10.
 1.  Add an `id` to the `Sonnet` class, which we will need for the index. It must be unique. It's best to use the existing id 
