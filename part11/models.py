@@ -8,7 +8,7 @@ class Sonnet:
         self.lines = sonnet_data["lines"]
 
         # ToDo 1: Make sure the sonnet has an attribute id that contains the number of the Sonnet as an int
-        #self.id =
+        self.id = int(self.title.split()[1][:-1]) # split the title (at whitespace), extract number (at index 1), remove colon ([:-1]) > leaves only index (as an int)
 
     @staticmethod
     def find_spans(text: str, pattern: str):
@@ -68,7 +68,17 @@ class Index:
         for sonnet in sonnets:
             # ToDo 2: Implement logic of adding tokens to the index. Use the pre-defined methods tokenize and
             #  _add_token to do so. Index the title and the lines of the sonnet.
-            pass # Remove the pass keyword and replace it with your code
+            sources = [(sonnet.title, None)]  # title > line_no=None
+            sources += [(line, i) for i, line in enumerate(sonnet.lines)]  # lines > line_no=0, etc. (using list comprehension)
+
+            for text, line_no in sources:  # iterate over all text sources
+                for token, pos in self.tokenize(text):  # tokenize text
+                    self._add_token(
+                        sonnet.id,  # document ID (which sonnet?)
+                        token,  # token string (which word?)
+                        line_no,  # None (title) or line index (which line? in the title or in the body?)
+                        pos  # character position (where does the word start?)
+                    )
 
     @staticmethod
     def tokenize(text):
@@ -189,10 +199,27 @@ class Index:
                     sonnet = self.sonnets[doc_id]
 
                     # ToDo 3: Based on the posting create the corresponding SearchResult instance
-                    result = None # Replace with code to create the correct SearchResult instance
+                    # structure SearchResult (reminder): SearchResult(title: str, title_spans: List[(start, end)], line_matches: List[LineMatch], matches: int)
+                    if posting.line_no is None: # posting comes from title (None)
+                        title_spans = [(posting.position, posting.position + len(token))] # span for this token
+                        line_matches = []  # no line matches
+                    else: # posting comes from a line
+                        title_spans = [] # no title matches
+                        line_matches = [ # create one LineMatch
+                            LineMatch(
+                                posting.line_no + 1,  # convert to 1-based line number (would otherwise start at 0)
+                                sonnet.lines[posting.line_no],  # line text
+                                [(posting.position, posting.position + len(token))]  # span for this token
+                            )]
 
-                    # At this point result contains the SearchResult corresponding to the posting - ready to be added
-                    # to the results dictionary.
+                    result = SearchResult( # create SearchResult for this posting
+                        sonnet.title, # title string
+                        title_spans, # title spans
+                        line_matches, # line matches
+                        1) # each posting counts as one match
+
+
+                    # At this point result contains the SearchResult corresponding to the posting - ready to be added to the results dictionary.
                     if doc_id not in results:
                         results[doc_id] = result
                     else:
@@ -263,11 +290,26 @@ class Searcher:
             #         need to merge them independent of whether the current search mode is "AND" or "OR". But the "OR"
             #         mode will always contains all search results.
 
-            # Add your code here...
+            if not combined_results: # first word initializes results
+                combined_results = results.copy()
+            else:
+                new_combined = {} # temporary storage
+                for doc_id, sr in combined_results.items():  # iterate existing results
+                    if doc_id in results:  # document found again
+                        new_combined[doc_id] = sr.combine_with(results[doc_id])
+                    elif search_mode == "OR":  # OR mode keeps old results
+                        new_combined[doc_id] = sr
+
+                if search_mode == "OR":  # add new documents (OR only)
+                    for doc_id, sr in results.items():
+                        if doc_id not in new_combined:
+                            new_combined[doc_id] = sr
+
+                combined_results = new_combined  # update combined_results
+
 
             # At this point combined_results contains a dictionary with the sonnet ID as key and the search result for
             # this sonnet. Just like the result you receive from the index, but combined for all words
-
         results = list(combined_results.values())
         return sorted(results, key=lambda sr: sr.title)
 
@@ -352,3 +394,45 @@ class SearchResult:
         combined.line_matches = sorted(lines_by_no.values(), key=lambda lm: lm.line_no)
 
         return combined
+
+# ToDo 0 (move setting commands into new class)
+class SettingCommand:
+    def __init__(self, command: str):
+        self.command = command # store the command string (each instance = one command)
+
+    def handle(self, raw: str, config) -> bool: # handle the given raw input, return True if a command handled it, False otherwise
+        if not raw.startswith(self.command): # filter: if input doesn’t start with this command, method opts out so another SettingCommand instance can be checked
+            return False
+
+        parts = raw.split()
+
+        if len(parts) != 2: # shared length check for all commands
+            print(f"Usage: {self.command} ...")
+            return True
+
+        value = parts[1] # extract relevant value from input
+
+        if self.command == ":highlight": # original "highlight" command block
+            if value not in ("on", "off"):
+                print("Usage: :highlight on|off")
+                return True
+            config.highlight = value == "on" # convert "on"/"off" to a boolean
+            print("Highlighting", "ON" if config.highlight else "OFF")
+
+        elif self.command == ":search-mode": # original "search mode" command block
+            if value not in ("AND", "OR"):
+                print("Usage: :search-mode AND|OR")
+                return True
+            config.search_mode = value # store search mode
+            print("Search mode set to", config.search_mode)
+
+        elif self.command == ":hl-mode": # original "highlight mode" command block
+            if value not in ("DEFAULT", "GREEN"):
+                print("Usage: :hl-mode DEFAULT|GREEN")
+                return True
+            config.highlight_mode = value # store highlight mode
+            print("Highlight mode set to", config.highlight_mode)
+
+        config.save() # save config
+
+        return True # command was handled

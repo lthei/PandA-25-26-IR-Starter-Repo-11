@@ -8,7 +8,7 @@ from typing import List
 import time
 
 from .constants import BANNER, HELP
-from .models import SearchResult, Searcher
+from .models import SearchResult, Searcher, SettingCommand
 
 from .file_utilities import load_config, load_sonnets, Configuration
 
@@ -18,8 +18,9 @@ def print_results(
     results: List[SearchResult],
     highlight_mode: str,
     query_time_ms: float | None = None,
+    total_docs: int | None = None # new parameter for number of total docs (FIX)
 ) -> None:
-    total_docs = len(results)
+    total_docs = total_docs or len(results) # use total_docs unless the value is not passed, then use len(results) (FIX)
     matched = [r for r in results if r.matches > 0]
 
     line = f'{len(matched)} out of {total_docs} sonnets contain "{query}".'
@@ -46,6 +47,13 @@ def main() -> None:
 
     searcher = Searcher(sonnets)
 
+    # ToDo 0 (use three instances of the new class for the setting commands)
+    # create three instances, one for each setting (replaces original if-blocks)
+    setting_commands = [
+        SettingCommand(":highlight"),
+        SettingCommand(":search-mode"),
+        SettingCommand(":hl-mode"), ]
+
     while True:
         try:
             raw = input("> ").strip()
@@ -66,37 +74,16 @@ def main() -> None:
                 print(HELP)
                 continue
 
-            if raw.startswith(":highlight"):
-                parts = raw.split()
-                if len(parts) == 2 and parts[1].lower() in ("on", "off"):
-                    config.highlight = parts[1].lower() == "on"
-                    print("Highlighting", "ON" if config.highlight else "OFF")
-                    config.save()
-                else:
-                    print("Usage: :highlight on|off")
-                continue
-
-            if raw.startswith(":search-mode"):
-                parts = raw.split()
-                if len(parts) == 2 and parts[1].upper() in ("AND", "OR"):
-                    config.search_mode = parts[1].upper()
-                    print("Search mode set to", config.search_mode)
-                    config.save()
-                else:
-                    print("Usage: :search-mode AND|OR")
-                continue
-
-            if raw.startswith(":hl-mode"):
-                parts = raw.split()
-                if len(parts) == 2 and parts[1].upper() in ("DEFAULT", "GREEN"):
-                    config.hl_mode = parts[1].upper()
-                    print("Highlight mode set to", config.hl_mode)
-                    config.save()
-                else:
-                    print("Usage: :hl_mode DEFAULT|GREEN")
-                continue
-
-            continue
+            # ToDo 0 (handle setting commands with new class)
+            # this block checks whether the input is a setting command
+            handled = False
+            for cmd in setting_commands:  # loop over each command until one matches and handles the input
+                if cmd.handle(raw, config):
+                    handled = True
+                    break  # if command was handled, the rest of the (inner) loop is skipped
+            if handled:
+                continue  # if setting command was processed, the input should not be processed as a search query, so we skip the outer loop
+            # if no command matched (handled is still False) , we can run the search logic below
 
         # ---------- Query evaluation ----------
 
@@ -113,7 +100,7 @@ def main() -> None:
 
         highlight_mode = config.hl_mode if config.highlight else None
 
-        print_results(raw, results, highlight_mode, elapsed_ms)
+        print_results(raw, results, highlight_mode, elapsed_ms, len(sonnets)) # add len(sonnets) to get total number of sonnets (otherwise not displayed correctly) (FIX)
 
 if __name__ == "__main__":
     main()
