@@ -290,20 +290,20 @@ class Searcher:
             #         need to merge them independent of whether the current search mode is "AND" or "OR". But the "OR"
             #         mode will always contains all search results.
 
-            if not combined_results: # first word initializes results
-                combined_results = results.copy()
-            else:
+            if not combined_results: # if this is the first word in the query
+                combined_results = results.copy() # start with all results from this word
+            else: # otherwise there are already previous word results
                 new_combined = {} # temporary storage
-                for doc_id, sr in combined_results.items():  # iterate existing results
-                    if doc_id in results:  # document found again
-                        new_combined[doc_id] = sr.combine_with(results[doc_id])
-                    elif search_mode == "OR":  # OR mode keeps old results
-                        new_combined[doc_id] = sr
+                for doc_id, sr in combined_results.items():  # go through existing sonnets
+                    if doc_id in results:  # keep only sonnets present in both
+                        new_combined[doc_id] = sr.combine_with(results[doc_id]) # merge SearchResults
+                    elif search_mode == "OR":
+                        new_combined[doc_id] = sr # keep old SearchResult for OR mode
 
-                if search_mode == "OR":  # add new documents (OR only)
-                    for doc_id, sr in results.items():
-                        if doc_id not in new_combined:
-                            new_combined[doc_id] = sr
+                if search_mode == "OR":  # for OR mode, also add any new sonnets not yet in new_combined
+                    for doc_id, sr in results.items(): # go through current word results
+                        if doc_id not in new_combined: # sonnets not already added
+                            new_combined[doc_id] = sr # add them
 
                 combined_results = new_combined  # update combined_results
 
